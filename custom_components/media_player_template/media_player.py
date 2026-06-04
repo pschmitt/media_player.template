@@ -730,7 +730,14 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         self._entry = entry
         self._data = data
 
-        name = data.get("name", entry.title)
+        import re as _re
+        raw_name = data.get("name", entry.title)
+        # Defensive: fix mangled "Template<template=(...) renders=0>" stored by
+        # earlier imports that forgot to call .template on Template objects.
+        if isinstance(raw_name, str) and raw_name.startswith("Template<"):
+            m = _re.search(r"Template<template=\((.+?)\)", raw_name)
+            raw_name = m.group(1) if m else raw_name
+        name = raw_name
         self._attr_name = name
         self._attr_unique_id = data.get(CONF_UNIQUE_ID) or entry.entry_id
 
@@ -811,6 +818,14 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
 
     async def async_added_to_hass(self) -> None:
         """Start tracking templates."""
+        # Self-heal: if config entry stored a mangled Template string, fix it now.
+        if self._entry.data.get("name") != self._attr_name:
+            self.hass.config_entries.async_update_entry(
+                self._entry,
+                title=self._attr_name,
+                data={**self._entry.data, "name": self._attr_name},
+            )
+
         from homeassistant.helpers.event import async_track_template_result, TrackTemplate
 
         templates: list[tuple[Template, Any]] = [
