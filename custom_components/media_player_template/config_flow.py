@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.const import CONF_UNIQUE_ID
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
@@ -79,7 +80,10 @@ _ACTION_KEYS = (
 
 
 def _opt_template(key: str, data: dict) -> vol.Optional:
-    return vol.Optional(key, default=data.get(key, ""))
+    val = data.get(key, "")
+    if isinstance(val, dict):
+        val = val.get("service", "")
+    return vol.Optional(key, default=val or "")
 
 
 def _template_schema(data: dict[str, Any]) -> vol.Schema:
@@ -163,6 +167,18 @@ class MediaPlayerTemplateConfigFlow(ConfigFlow, domain=DOMAIN):
             ),
         )
 
+    async def async_step_import(
+        self, import_data: dict[str, Any]
+    ) -> ConfigFlowResult:
+        """Handle import from YAML configuration (migration to config entry)."""
+        unique_id = import_data.get(CONF_UNIQUE_ID) or import_data.get("name", "").lower()
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured()
+        return self.async_create_entry(
+            title=import_data.get("name", unique_id),
+            data=import_data,
+        )
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
@@ -206,7 +222,15 @@ class MediaPlayerTemplateOptionsFlow(OptionsFlow):
         data = self._merged()
         if user_input is not None:
             updated = {**data}
-            updated.update({k: v for k, v in user_input.items()})
+            for k, v in user_input.items():
+                if not v:
+                    updated.pop(k, None)
+                    continue
+                existing = data.get(k)
+                if isinstance(existing, dict) and v == existing.get("service", ""):
+                    updated[k] = existing
+                else:
+                    updated[k] = v
             return self.async_create_entry(data=updated)
 
         return self.async_show_form(
