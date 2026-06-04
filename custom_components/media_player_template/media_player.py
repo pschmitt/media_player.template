@@ -848,8 +848,8 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
                 templates.append((tpl, handler))
 
         for tpl, handler in templates:
-            @callback
             def _make_listener(h):
+                @callback
                 def listener(event, updates):
                     result = updates[-1].result
                     h(result)
