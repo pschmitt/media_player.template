@@ -202,8 +202,13 @@ async def async_setup_platform(
 
     for object_id, entity_config in config[CONF_MEDIAPLAYER].items():
         mapped = {LEGACY_FIELDS.get(k, k): v for k, v in entity_config.items()}
-        name = str(mapped.get(CONF_NAME, object_id))
-        unique_id = str(mapped.get(CONF_UNIQUE_ID, object_id))
+        def _str(val: Any, fallback: str) -> str:
+            if val is None:
+                return fallback
+            return val.template if hasattr(val, "template") else str(val)
+
+        name = _str(mapped.get(CONF_NAME), object_id)
+        unique_id = _str(mapped.get(CONF_UNIQUE_ID), object_id)
 
         entry_data: dict[str, Any] = {"name": name, CONF_UNIQUE_ID: unique_id}
 
