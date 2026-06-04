@@ -1,0 +1,107 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Create Media Player",
+        "description": "Define a template-based media player. You can add more templates and action scripts in the next steps.",
+        "data": {
+          "name": "Name",
+          "state_template": "State template"
+        },
+        "data_description": {
+          "name": "Friendly name for this media player.",
+          "state_template": "Template that returns: playing, paused, idle, on, off, standby, or buffering."
+        }
+      },
+      "templates": {
+        "title": "Metadata Templates",
+        "description": "Optional templates for media metadata. Leave blank to skip.",
+        "data": {
+          "title_template": "Title",
+          "artist_template": "Artist",
+          "album_template": "Album",
+          "thumbnail_template": "Thumbnail URL",
+          "volume_template": "Volume level (0.0–1.0)",
+          "muted_template": "Muted (true/false)",
+          "source_template": "Current source",
+          "sound_mode_template": "Current sound mode",
+          "position_template": "Media position (seconds)",
+          "duration_template": "Media duration (seconds)",
+          "media_type_template": "Media content type"
+        }
+      },
+      "actions": {
+        "title": "Action Scripts",
+        "description": "Script entity IDs to call for each action. Leave blank to disable.",
+        "data": {
+          "play_script": "Play",
+          "pause_script": "Pause",
+          "stop_script": "Stop",
+          "next_script": "Next track",
+          "previous_script": "Previous track",
+          "volume_up_script": "Volume up",
+          "volume_down_script": "Volume down",
+          "set_volume_script": "Set volume",
+          "mute_script": "Toggle mute",
+          "turn_on_script": "Turn on",
+          "turn_off_script": "Turn off",
+          "play_media_script": "Play media",
+          "seek_script": "Seek",
+          "select_source_script": "Select source",
+          "select_sound_mode_script": "Select sound mode"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "A media player with this name is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Media Player",
+        "menu_options": {
+          "templates": "Edit templates",
+          "actions": "Edit action scripts"
+        }
+      },
+      "templates": {
+        "title": "Metadata Templates",
+        "data": {
+          "state_template": "State template",
+          "title_template": "Title",
+          "artist_template": "Artist",
+          "album_template": "Album",
+          "thumbnail_template": "Thumbnail URL",
+          "volume_template": "Volume level (0.0–1.0)",
+          "muted_template": "Muted (true/false)",
+          "source_template": "Current source",
+          "sound_mode_template": "Current sound mode",
+          "position_template": "Media position (seconds)",
+          "duration_template": "Media duration (seconds)",
+          "media_type_template": "Media content type"
+        }
+      },
+      "actions": {
+        "title": "Action Scripts",
+        "data": {
+          "play_script": "Play",
+          "pause_script": "Pause",
+          "stop_script": "Stop",
+          "next_script": "Next track",
+          "previous_script": "Previous track",
+          "volume_up_script": "Volume up",
+          "volume_down_script": "Volume down",
+          "set_volume_script": "Set volume",
+          "mute_script": "Toggle mute",
+          "turn_on_script": "Turn on",
+          "turn_off_script": "Turn off",
+          "play_media_script": "Play media",
+          "seek_script": "Seek",
+          "select_source_script": "Select source",
+          "select_sound_mode_script": "Select sound mode"
+        }
+      }
+    }
+  }
+}
