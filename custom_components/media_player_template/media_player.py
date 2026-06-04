@@ -867,8 +867,8 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         self.async_schedule_update_ha_state(force_refresh=True)
 
     async def async_will_remove_from_hass(self) -> None:
-        for unsub in self._unsub:
-            unsub()
+        for tracker in self._unsub:
+            tracker.async_remove()
         self._unsub.clear()
 
     async def async_update(self) -> None:
