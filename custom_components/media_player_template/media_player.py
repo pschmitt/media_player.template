@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import voluptuous as vol
@@ -38,6 +39,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import TemplateError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.helpers.entity_platform import (
     AddConfigEntryEntitiesCallback,
     AddEntitiesCallback,
@@ -186,7 +188,12 @@ def _normalize_action(action_cfg: Any) -> dict[str, Any] | None:
     if not service:
         return None
     result: dict[str, Any] = {"service": str(service)}
-    if data := {k: (v.template if hasattr(v, "template") else v) for k, v in step.get("data", {}).items()}:
+    data = {k: (v.template if hasattr(v, "template") else v) for k, v in step.get("data", {}).items()}
+    # Fold target:/entity_id: into data so they survive the import.
+    for src in (step.get("target") or {}, {k: step[k] for k in ("entity_id",) if k in step}):
+        for k, v in src.items():
+            data.setdefault(k, v.template if hasattr(v, "template") else v)
+    if data:
         result["data"] = data
     return result
 
@@ -730,12 +737,11 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         self._entry = entry
         self._data = data
 
-        import re as _re
         raw_name = data.get("name", entry.title)
         # Defensive: fix mangled "Template<template=(...) renders=0>" stored by
         # earlier imports that forgot to call .template on Template objects.
         if isinstance(raw_name, str) and raw_name.startswith("Template<"):
-            m = _re.search(r"Template<template=\((.+?)\)", raw_name)
+            m = re.search(r"Template<template=\((.+?)\)", raw_name)
             raw_name = m.group(1) if m else raw_name
         name = raw_name
         self._attr_name = name
@@ -826,8 +832,6 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
                 data={**self._entry.data, "name": self._attr_name},
             )
 
-        from homeassistant.helpers.event import async_track_template_result, TrackTemplate
-
         templates: list[tuple[Template, Any]] = [
             (self._state_tpl, self._handle_state),
         ]
@@ -893,7 +897,8 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
                 result = tpl.async_render(parse_result=False)
                 handler(result)
             except TemplateError as err:
-                _LOGGER.error("Template error for %s: %s", self.entity_id, err)
+                _LOGGER.warning("Template error for %s: %s", self.entity_id, err)
+                handler(err)
 
     # --- Template result handlers ---
 
@@ -938,7 +943,7 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         )
 
     def _handle_volume(self, result: Any) -> None:
-        if not result or isinstance(result, TemplateError):
+        if result is None or result == "" or isinstance(result, TemplateError):
             self._attr_volume_level = None
             return
         try:
@@ -968,7 +973,7 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         )
 
     def _handle_position(self, result: Any) -> None:
-        if not result or isinstance(result, TemplateError):
+        if result is None or result == "" or isinstance(result, TemplateError):
             self._attr_media_position = None
             self._attr_media_position_updated_at = None
             return
@@ -980,7 +985,7 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
             self._attr_media_position_updated_at = None
 
     def _handle_duration(self, result: Any) -> None:
-        if not result or isinstance(result, TemplateError):
+        if result is None or result == "" or isinstance(result, TemplateError):
             self._attr_media_duration = None
             return
         try:
@@ -1012,6 +1017,13 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
             return
         service_str = action.get("service") or action.get("action", "")
         if not service_str:
+            return
+        if "." not in service_str:
+            _LOGGER.error(
+                "Invalid service %r for %s (expected domain.service)",
+                service_str,
+                self.entity_id,
+            )
             return
         domain, service_name = service_str.split(".", 1)
         svc_data: dict[str, Any] = {}
