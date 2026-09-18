@@ -19,9 +19,6 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.components.template import DOMAIN as TEMPLATE_DOMAIN
 from homeassistant.components.template.const import CONF_DEFAULT_ENTITY_ID
-from homeassistant.components.template.schemas import (
-    TEMPLATE_ENTITY_AVAILABILITY_SCHEMA_LEGACY,
-)
 from homeassistant.components.template.template_entity import TemplateEntity
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
@@ -92,6 +89,13 @@ LEGACY_FIELDS = {
 }
 
 CONF_ALBUM_ART_TEMPLATE = "album_art_template"
+# HA 2026.9 removed TEMPLATE_ENTITY_AVAILABILITY_SCHEMA_LEGACY from
+# homeassistant.components.template.schemas along with the rest of the legacy
+# template config keys.  This platform's YAML schema is legacy throughout
+# (value_template, icon_template, title_template, ...), so keep accepting
+# availability_template by declaring the key here rather than importing an HA
+# internal that can disappear again.
+CONF_AVAILABILITY_TEMPLATE = "availability_template"
 CONF_CURRENT_IS_MUTED_TEMPLATE = "current_is_muted_template"
 CONF_CURRENT_POSITION_TEMPLATE = "current_position_template"
 CONF_CURRENT_SOUND_MODE_TEMPLATE = "current_sound_mode_template"
@@ -129,6 +133,7 @@ MEDIA_PLAYER_SCHEMA = vol.Schema(
         vol.Optional(ATTR_FRIENDLY_NAME): cv.template,
         vol.Optional(CONF_ALBUM_ART_TEMPLATE): cv.template,
         vol.Optional(CONF_ALBUM_TEMPLATE): cv.template,
+        vol.Optional(CONF_AVAILABILITY_TEMPLATE): cv.template,
         vol.Optional("artist_template"): cv.template,
         vol.Optional(CONF_CURRENT_IS_MUTED_TEMPLATE): cv.template,
         vol.Optional(CONF_CURRENT_POSITION_TEMPLATE): cv.template,
@@ -165,7 +170,7 @@ MEDIA_PLAYER_SCHEMA = vol.Schema(
         vol.Optional(CONF_VOLUME_DOWN_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(CONF_VOLUME_UP_ACTION): cv.SCRIPT_SCHEMA,
     }
-).extend(TEMPLATE_ENTITY_AVAILABILITY_SCHEMA_LEGACY.schema)
+)
 
 PLATFORM_SCHEMA = MEDIA_PLAYER_PLATFORM_SCHEMA.extend(
     {vol.Required(CONF_MEDIAPLAYER): cv.schema_with_slug_keys(MEDIA_PLAYER_SCHEMA)}
