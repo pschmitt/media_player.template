@@ -5,8 +5,8 @@ A custom integration that lets you define media player entities using Jinja2 tem
 ## Features
 
 - **Template-driven state** — define playing/paused/idle/etc. from any sensor, binary sensor, or arbitrary template
-- **Rich metadata** — title, artist, album, thumbnail, position, duration, volume, mute, source, sound mode
-- **Full action support** — play, pause, stop, next/previous, volume, seek, play media, and more
+- **Rich metadata** — title, artist, album, thumbnail, position, duration, volume, mute, source, sound mode, app id/name, repeat, shuffle, entity picture
+- **Full action support** — play, pause, stop, next/previous, volume, seek, play media, repeat, shuffle, and more
 - **Config entry + UI** — add and configure players from the HA UI without editing YAML
 - **Hot reload** — YAML-configured players reload without restarting HA (`Developer Tools → YAML → Reload`)
 - **Device registry** — each player appears as a proper HA device
@@ -59,7 +59,13 @@ media_player:
           service: script.desktop_vol_up
         volume_down:
           service: script.desktop_vol_down
+        # Also supported (same keys as upstream media_player.template):
+        # app_id_template, app_name_template, entity_picture_template,
+        # current_repeat_template (off/all/one), current_shuffle_template,
+        # set_repeat / set_shuffle actions, media_image_url_remotely_accessible
 ```
+
+YAML players are imported into config entries on startup; the keys above map onto the config-entry fields of the same meaning.
 
 To hot-reload after changing YAML: **Developer Tools → YAML → Reload** (select your domain or use `homeassistant.reload_custom_component`).
 
@@ -97,6 +103,12 @@ The state template should render one of:
 | `seek` | `{{ position }}` — seconds |
 | `select_source` | `{{ source }}` — string |
 | `select_sound_mode` | `{{ sound_mode }}` — string |
+| `set_repeat` | `{{ repeat }}` — `off`, `all` or `one` |
+| `set_shuffle` | `{{ shuffle }}` — boolean |
+
+When an action is a plain script entity id (UI-created players), these variables are passed to the script as `variables`.
+
+If the repeat or shuffle template is left empty, the player keeps the last value set through the action (optimistic), just like volume and mute.
 
 ## Credits
 

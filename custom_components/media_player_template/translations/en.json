@@ -27,7 +27,13 @@
           "sound_mode_template": "Current sound mode",
           "position_template": "Media position (seconds)",
           "duration_template": "Media duration (seconds)",
-          "media_type_template": "Media content type"
+          "media_type_template": "Media content type",
+          "app_id_template": "App ID",
+          "app_name_template": "App name",
+          "repeat_template": "Repeat mode (off/all/one)",
+          "shuffle_template": "Shuffle (true/false)",
+          "entity_picture_template": "Entity picture URL",
+          "media_image_remotely_accessible": "Thumbnail is reachable from outside (proxy disabled)"
         }
       },
       "actions": {
@@ -48,7 +54,9 @@
           "play_media_script": "Play media",
           "seek_script": "Seek",
           "select_source_script": "Select source",
-          "select_sound_mode_script": "Select sound mode"
+          "select_sound_mode_script": "Select sound mode",
+          "set_repeat_script": "Set repeat (variable: repeat)",
+          "set_shuffle_script": "Set shuffle (variable: shuffle)"
         }
       }
     },
@@ -79,7 +87,13 @@
           "sound_mode_template": "Current sound mode",
           "position_template": "Media position (seconds)",
           "duration_template": "Media duration (seconds)",
-          "media_type_template": "Media content type"
+          "media_type_template": "Media content type",
+          "app_id_template": "App ID",
+          "app_name_template": "App name",
+          "repeat_template": "Repeat mode (off/all/one)",
+          "shuffle_template": "Shuffle (true/false)",
+          "entity_picture_template": "Entity picture URL",
+          "media_image_remotely_accessible": "Thumbnail is reachable from outside (proxy disabled)"
         }
       },
       "actions": {
@@ -99,7 +113,9 @@
           "play_media_script": "Play media",
           "seek_script": "Seek",
           "select_source_script": "Select source",
-          "select_sound_mode_script": "Select sound mode"
+          "select_sound_mode_script": "Select sound mode",
+          "set_repeat_script": "Set repeat (variable: repeat)",
+          "set_shuffle_script": "Set shuffle (variable: shuffle)"
         }
       }
     }

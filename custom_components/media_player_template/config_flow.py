@@ -12,6 +12,14 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_ALBUM_TEMPLATE,
+    CONF_APP_ID_TEMPLATE,
+    CONF_APP_NAME_TEMPLATE,
+    CONF_ENTITY_PICTURE_TEMPLATE,
+    CONF_MEDIA_IMAGE_REMOTELY_ACCESSIBLE,
+    CONF_REPEAT_TEMPLATE,
+    CONF_SET_REPEAT_SCRIPT,
+    CONF_SET_SHUFFLE_SCRIPT,
+    CONF_SHUFFLE_TEMPLATE,
     CONF_ARTIST_TEMPLATE,
     CONF_DURATION_TEMPLATE,
     CONF_MEDIA_TYPE_TEMPLATE,
@@ -58,6 +66,11 @@ _TEMPLATE_KEYS = (
     CONF_POSITION_TEMPLATE,
     CONF_DURATION_TEMPLATE,
     CONF_MEDIA_TYPE_TEMPLATE,
+    CONF_APP_ID_TEMPLATE,
+    CONF_APP_NAME_TEMPLATE,
+    CONF_REPEAT_TEMPLATE,
+    CONF_SHUFFLE_TEMPLATE,
+    CONF_ENTITY_PICTURE_TEMPLATE,
 )
 
 _ACTION_KEYS = (
@@ -76,7 +89,18 @@ _ACTION_KEYS = (
     CONF_SEEK_SCRIPT,
     CONF_SELECT_SOURCE_SCRIPT,
     CONF_SELECT_SOUND_MODE_SCRIPT,
+    CONF_SET_REPEAT_SCRIPT,
+    CONF_SET_SHUFFLE_SCRIPT,
 )
+
+_BOOLEAN = selector.BooleanSelector()
+
+
+def _remotely_accessible(data: dict[str, Any]) -> vol.Optional:
+    return vol.Optional(
+        CONF_MEDIA_IMAGE_REMOTELY_ACCESSIBLE,
+        default=bool(data.get(CONF_MEDIA_IMAGE_REMOTELY_ACCESSIBLE, False)),
+    )
 
 
 def _opt_template(key: str, data: dict) -> vol.Optional:
@@ -94,6 +118,7 @@ def _template_schema(data: dict[str, Any]) -> vol.Schema:
                 default=data.get(CONF_STATE_TEMPLATE, ""),
             ): _OPTIONAL_TEMPLATE,
             **{_opt_template(k, data): _OPTIONAL_TEMPLATE for k in _TEMPLATE_KEYS},
+            _remotely_accessible(data): _BOOLEAN,
         }
     )
 
@@ -149,7 +174,10 @@ class MediaPlayerTemplateConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="templates",
             data_schema=vol.Schema(
-                {vol.Optional(k, default=""): _OPTIONAL_TEMPLATE for k in _TEMPLATE_KEYS}
+                {
+                    **{vol.Optional(k, default=""): _OPTIONAL_TEMPLATE for k in _TEMPLATE_KEYS},
+                    _remotely_accessible({}): _BOOLEAN,
+                }
             ),
         )
 

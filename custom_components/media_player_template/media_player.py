@@ -16,6 +16,7 @@ from homeassistant.components.media_player import (
     MediaPlayerEntityFeature,
     MediaPlayerState,
     MediaType,
+    RepeatMode,
 )
 from homeassistant.components.template import DOMAIN as TEMPLATE_DOMAIN
 from homeassistant.components.template.const import CONF_DEFAULT_ENTITY_ID
@@ -48,6 +49,14 @@ import homeassistant.util.dt as dt_util
 
 from .const import (
     CONF_ALBUM_TEMPLATE,
+    CONF_APP_ID_TEMPLATE,
+    CONF_APP_NAME_TEMPLATE,
+    CONF_ENTITY_PICTURE_TEMPLATE as CONF_ENTRY_PICTURE_TEMPLATE,
+    CONF_MEDIA_IMAGE_REMOTELY_ACCESSIBLE,
+    CONF_REPEAT_TEMPLATE,
+    CONF_SET_REPEAT_SCRIPT,
+    CONF_SET_SHUFFLE_SCRIPT,
+    CONF_SHUFFLE_TEMPLATE,
     CONF_ARTIST_TEMPLATE,
     CONF_DURATION_TEMPLATE,
     CONF_MEDIA_TYPE_TEMPLATE,
@@ -98,6 +107,8 @@ CONF_ALBUM_ART_TEMPLATE = "album_art_template"
 CONF_AVAILABILITY_TEMPLATE = "availability_template"
 CONF_CURRENT_IS_MUTED_TEMPLATE = "current_is_muted_template"
 CONF_CURRENT_POSITION_TEMPLATE = "current_position_template"
+CONF_CURRENT_REPEAT_TEMPLATE = "current_repeat_template"
+CONF_CURRENT_SHUFFLE_TEMPLATE = "current_shuffle_template"
 CONF_CURRENT_SOUND_MODE_TEMPLATE = "current_sound_mode_template"
 CONF_CURRENT_SOURCE_TEMPLATE = "current_source_template"
 CONF_CURRENT_VOLUME_TEMPLATE = "current_volume_template"
@@ -119,6 +130,8 @@ CONF_PAUSE_ACTION = "pause"
 CONF_PLAY_ACTION = "play"
 CONF_PLAY_MEDIA_ACTION = "play_media"
 CONF_PREVIOUS_ACTION = "previous"
+CONF_REPEAT_SET_ACTION = "set_repeat"
+CONF_SHUFFLE_SET_ACTION = "set_shuffle"
 CONF_SEEK_ACTION = "seek"
 CONF_SET_VOLUME_ACTION = "set_volume"
 CONF_SOUND_MODES = "sound_modes"
@@ -133,10 +146,14 @@ MEDIA_PLAYER_SCHEMA = vol.Schema(
         vol.Optional(ATTR_FRIENDLY_NAME): cv.template,
         vol.Optional(CONF_ALBUM_ART_TEMPLATE): cv.template,
         vol.Optional(CONF_ALBUM_TEMPLATE): cv.template,
+        vol.Optional(CONF_APP_ID_TEMPLATE): cv.template,
+        vol.Optional(CONF_APP_NAME_TEMPLATE): cv.template,
         vol.Optional(CONF_AVAILABILITY_TEMPLATE): cv.template,
         vol.Optional("artist_template"): cv.template,
         vol.Optional(CONF_CURRENT_IS_MUTED_TEMPLATE): cv.template,
         vol.Optional(CONF_CURRENT_POSITION_TEMPLATE): cv.template,
+        vol.Optional(CONF_CURRENT_REPEAT_TEMPLATE): cv.template,
+        vol.Optional(CONF_CURRENT_SHUFFLE_TEMPLATE): cv.template,
         vol.Optional(CONF_CURRENT_SOUND_MODE_TEMPLATE): cv.template,
         vol.Optional(CONF_CURRENT_SOURCE_TEMPLATE): cv.template,
         vol.Optional(CONF_CURRENT_VOLUME_TEMPLATE): cv.template,
@@ -162,6 +179,8 @@ MEDIA_PLAYER_SCHEMA = vol.Schema(
         vol.Optional(CONF_PREVIOUS_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(CONF_SEEK_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(CONF_SET_VOLUME_ACTION): cv.SCRIPT_SCHEMA,
+        vol.Optional(CONF_REPEAT_SET_ACTION): cv.SCRIPT_SCHEMA,
+        vol.Optional(CONF_SHUFFLE_SET_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(CONF_SOUND_MODES, default={}): {cv.string: cv.SCRIPT_SCHEMA},
         vol.Optional(CONF_STOP_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(CONF_TITLE_TEMPLATE_LEGACY): cv.template,
@@ -237,6 +256,11 @@ async def async_setup_platform(
             (CONF_CURRENT_POSITION_TEMPLATE, CONF_POSITION_TEMPLATE),
             (CONF_MEDIA_DURATION_TEMPLATE, CONF_DURATION_TEMPLATE),
             (CONF_MEDIA_CONTENT_TYPE_TEMPLATE, CONF_MEDIA_TYPE_TEMPLATE),
+            (CONF_APP_ID_TEMPLATE, CONF_APP_ID_TEMPLATE),
+            (CONF_APP_NAME_TEMPLATE, CONF_APP_NAME_TEMPLATE),
+            (CONF_CURRENT_REPEAT_TEMPLATE, CONF_REPEAT_TEMPLATE),
+            (CONF_CURRENT_SHUFFLE_TEMPLATE, CONF_SHUFFLE_TEMPLATE),
+            (CONF_ENTITY_PICTURE_TEMPLATE, CONF_ENTRY_PICTURE_TEMPLATE),
         ):
             if tmpl := mapped.get(yaml_key):
                 entry_data[entry_key] = tmpl.template if hasattr(tmpl, "template") else str(tmpl)
@@ -255,10 +279,17 @@ async def async_setup_platform(
             (CONF_OFF_ACTION, CONF_TURN_OFF_SCRIPT),
             (CONF_PLAY_MEDIA_ACTION, CONF_PLAY_MEDIA_SCRIPT),
             (CONF_SEEK_ACTION, CONF_SEEK_SCRIPT),
+            (CONF_REPEAT_SET_ACTION, CONF_SET_REPEAT_SCRIPT),
+            (CONF_SHUFFLE_SET_ACTION, CONF_SET_SHUFFLE_SCRIPT),
         ):
             if action := mapped.get(yaml_key):
                 if normalized := _normalize_action(action):
                     entry_data[entry_key] = normalized
+
+        if CONF_MEDIA_IMAGE_URL_REMOTELY_ACCESSIBLE in mapped:
+            entry_data[CONF_MEDIA_IMAGE_REMOTELY_ACCESSIBLE] = bool(
+                mapped[CONF_MEDIA_IMAGE_URL_REMOTELY_ACCESSIBLE]
+            )
 
         hass.async_create_task(
             hass.config_entries.flow.async_init(
@@ -765,6 +796,14 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         self._position_tpl = _make_template(hass, data.get(CONF_POSITION_TEMPLATE))
         self._duration_tpl = _make_template(hass, data.get(CONF_DURATION_TEMPLATE))
         self._media_type_tpl = _make_template(hass, data.get(CONF_MEDIA_TYPE_TEMPLATE))
+        self._app_id_tpl = _make_template(hass, data.get(CONF_APP_ID_TEMPLATE))
+        self._app_name_tpl = _make_template(hass, data.get(CONF_APP_NAME_TEMPLATE))
+        self._repeat_tpl = _make_template(hass, data.get(CONF_REPEAT_TEMPLATE))
+        self._shuffle_tpl = _make_template(hass, data.get(CONF_SHUFFLE_TEMPLATE))
+        self._picture_tpl = _make_template(hass, data.get(CONF_ENTRY_PICTURE_TEMPLATE))
+        self._attr_media_image_remotely_accessible = bool(
+            data.get(CONF_MEDIA_IMAGE_REMOTELY_ACCESSIBLE, False)
+        )
 
         # Action: str (script entity-id) or dict {service, data} — both are valid
         self._play_action = data.get(CONF_PLAY_SCRIPT)
@@ -782,6 +821,8 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         self._seek_action = data.get(CONF_SEEK_SCRIPT)
         self._select_source_action = data.get(CONF_SELECT_SOURCE_SCRIPT)
         self._select_sound_mode_action = data.get(CONF_SELECT_SOUND_MODE_SCRIPT)
+        self._set_repeat_action = data.get(CONF_SET_REPEAT_SCRIPT)
+        self._set_shuffle_action = data.get(CONF_SET_SHUFFLE_SCRIPT)
 
         # Supported features
         feats = MediaPlayerEntityFeature(0)
@@ -800,6 +841,8 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         feats |= _feature_if(self._seek_action, MediaPlayerEntityFeature.SEEK)
         feats |= _feature_if(self._select_source_action, MediaPlayerEntityFeature.SELECT_SOURCE)
         feats |= _feature_if(self._select_sound_mode_action, MediaPlayerEntityFeature.SELECT_SOUND_MODE)
+        feats |= _feature_if(self._set_repeat_action, MediaPlayerEntityFeature.REPEAT_SET)
+        feats |= _feature_if(self._set_shuffle_action, MediaPlayerEntityFeature.SHUFFLE_SET)
         self._attr_supported_features = feats
 
         # Mutable state
@@ -816,6 +859,11 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         self._attr_media_position_updated_at = None
         self._attr_media_duration: int | None = None
         self._attr_media_content_type: MediaType | None = None
+        self._attr_app_id: str | None = None
+        self._attr_app_name: str | None = None
+        self._attr_repeat: RepeatMode | None = None
+        self._attr_shuffle: bool | None = None
+        self._attr_entity_picture: str | None = None
         self._unsub: list[Any] = []
 
     @property
@@ -826,6 +874,14 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
             manufacturer="Media Player Template",
             model="Config Entry",
         )
+
+    @property
+    def entity_picture(self) -> str | None:
+        # MediaPlayerEntity derives the picture from the media image; an
+        # explicit entity picture template takes precedence when it renders.
+        if self._attr_entity_picture:
+            return self._attr_entity_picture
+        return super().entity_picture
 
     async def async_added_to_hass(self) -> None:
         """Start tracking templates."""
@@ -852,6 +908,11 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
             (self._position_tpl, self._handle_position),
             (self._duration_tpl, self._handle_duration),
             (self._media_type_tpl, self._handle_media_type),
+            (self._app_id_tpl, self._handle_app_id),
+            (self._app_name_tpl, self._handle_app_name),
+            (self._repeat_tpl, self._handle_repeat),
+            (self._shuffle_tpl, self._handle_shuffle),
+            (self._picture_tpl, self._handle_picture),
         ):
             if tpl is not None:
                 templates.append((tpl, handler))
@@ -895,6 +956,11 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
             (self._position_tpl, self._handle_position),
             (self._duration_tpl, self._handle_duration),
             (self._media_type_tpl, self._handle_media_type),
+            (self._app_id_tpl, self._handle_app_id),
+            (self._app_name_tpl, self._handle_app_name),
+            (self._repeat_tpl, self._handle_repeat),
+            (self._shuffle_tpl, self._handle_shuffle),
+            (self._picture_tpl, self._handle_picture),
         ):
             if tpl is None:
                 continue
@@ -1007,6 +1073,49 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         except ValueError:
             self._attr_media_content_type = None
 
+    def _handle_app_id(self, result: Any) -> None:
+        self._attr_app_id = (
+            None if not result or isinstance(result, TemplateError)
+            else str(result)
+        )
+
+    def _handle_app_name(self, result: Any) -> None:
+        self._attr_app_name = (
+            None if not result or isinstance(result, TemplateError)
+            else str(result)
+        )
+
+    def _handle_picture(self, result: Any) -> None:
+        self._attr_entity_picture = (
+            None if not result or isinstance(result, TemplateError)
+            else str(result)
+        )
+
+    def _handle_repeat(self, result: Any) -> None:
+        if not result or isinstance(result, TemplateError):
+            self._attr_repeat = None
+            return
+        try:
+            self._attr_repeat = RepeatMode(str(result).lower())
+        except ValueError:
+            _LOGGER.error(
+                "Entity %s: invalid repeat mode %r (expected one of: %s)",
+                self.entity_id,
+                result,
+                ", ".join(RepeatMode),
+            )
+            self._attr_repeat = None
+
+    def _handle_shuffle(self, result: Any) -> None:
+        if result is None or result == "" or isinstance(result, TemplateError):
+            self._attr_shuffle = None
+            return
+        try:
+            self._attr_shuffle = cv.boolean(result)
+        except vol.Invalid:
+            _LOGGER.error("Entity %s: invalid shuffle value %r", self.entity_id, result)
+            self._attr_shuffle = None
+
     # --- Action helpers ---
 
     async def _call_action(
@@ -1015,9 +1124,13 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         if not action:
             return
         if isinstance(action, str):
-            # Simple script entity-id (UI-created entry)
+            # Simple script entity-id (UI-created entry); hand the action's
+            # variables (volume, repeat, ...) to the script.
+            svc: dict[str, Any] = {"entity_id": action}
+            if variables:
+                svc["variables"] = variables
             await self.hass.services.async_call(
-                "script", "turn_on", {"entity_id": action}, context=self._context
+                "script", "turn_on", svc, context=self._context
             )
             return
         service_str = action.get("service") or action.get("action", "")
@@ -1108,3 +1221,15 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
             self._attr_sound_mode = sound_mode
             self.async_write_ha_state()
         await self._call_action(self._select_sound_mode_action, {"sound_mode": sound_mode})
+
+    async def async_set_repeat(self, repeat: RepeatMode) -> None:
+        if self._repeat_tpl is None:
+            self._attr_repeat = repeat
+            self.async_write_ha_state()
+        await self._call_action(self._set_repeat_action, {"repeat": repeat})
+
+    async def async_set_shuffle(self, shuffle: bool) -> None:
+        if self._shuffle_tpl is None:
+            self._attr_shuffle = shuffle
+            self.async_write_ha_state()
+        await self._call_action(self._set_shuffle_action, {"shuffle": shuffle})
