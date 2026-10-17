@@ -1,12 +1,16 @@
 {
   "domain": "media_player_template",
   "name": "Media Player Template",
-  "version": "2.1.0",
+  "codeowners": [
+    "@pschmitt"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "template"
+  ],
   "documentation": "https://github.com/pschmitt/homeassistant-media-player-template",
+  "iot_class": "local_push",
   "issue_tracker": "https://github.com/pschmitt/homeassistant-media-player-template/issues",
   "requirements": [],
-  "dependencies": ["template"],
-  "codeowners": ["@pschmitt"],
-  "config_flow": true,
-  "iot_class": "local_push"
+  "version": "2.1.0"
 }

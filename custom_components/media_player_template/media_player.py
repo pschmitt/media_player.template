@@ -6,20 +6,25 @@ import logging
 import re
 from typing import Any
 
+import homeassistant.helpers.config_validation as cv
+import homeassistant.util.dt as dt_util
 import voluptuous as vol
 from homeassistant.components.media_player import (
     DEVICE_CLASSES_SCHEMA,
-    DOMAIN as MEDIA_PLAYER_DOMAIN,
     ENTITY_ID_FORMAT,
-    PLATFORM_SCHEMA as MEDIA_PLAYER_PLATFORM_SCHEMA,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
     MediaType,
     RepeatMode,
 )
+from homeassistant.components.media_player import (
+    DOMAIN as MEDIA_PLAYER_DOMAIN,
+)
+from homeassistant.components.media_player import (
+    PLATFORM_SCHEMA as MEDIA_PLAYER_PLATFORM_SCHEMA,
+)
 from homeassistant.components.template import DOMAIN as TEMPLATE_DOMAIN
-from homeassistant.components.template.const import CONF_DEFAULT_ENTITY_ID
 from homeassistant.components.template.template_entity import TemplateEntity
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
@@ -35,30 +40,23 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import TemplateError
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.helpers.entity_platform import (
     AddConfigEntryEntitiesCallback,
     AddEntitiesCallback,
 )
+from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.helpers.reload import async_setup_reload_service
 from homeassistant.helpers.template import Template
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-import homeassistant.util.dt as dt_util
 
 from .const import (
     CONF_ALBUM_TEMPLATE,
     CONF_APP_ID_TEMPLATE,
     CONF_APP_NAME_TEMPLATE,
-    CONF_ENTITY_PICTURE_TEMPLATE as CONF_ENTRY_PICTURE_TEMPLATE,
-    CONF_MEDIA_IMAGE_REMOTELY_ACCESSIBLE,
-    CONF_REPEAT_TEMPLATE,
-    CONF_SET_REPEAT_SCRIPT,
-    CONF_SET_SHUFFLE_SCRIPT,
-    CONF_SHUFFLE_TEMPLATE,
     CONF_ARTIST_TEMPLATE,
     CONF_DURATION_TEMPLATE,
+    CONF_MEDIA_IMAGE_REMOTELY_ACCESSIBLE,
     CONF_MEDIA_TYPE_TEMPLATE,
     CONF_MUTE_SCRIPT,
     CONF_MUTED_TEMPLATE,
@@ -68,10 +66,14 @@ from .const import (
     CONF_PLAY_SCRIPT,
     CONF_POSITION_TEMPLATE,
     CONF_PREVIOUS_SCRIPT,
+    CONF_REPEAT_TEMPLATE,
     CONF_SEEK_SCRIPT,
     CONF_SELECT_SOUND_MODE_SCRIPT,
     CONF_SELECT_SOURCE_SCRIPT,
+    CONF_SET_REPEAT_SCRIPT,
+    CONF_SET_SHUFFLE_SCRIPT,
     CONF_SET_VOLUME_SCRIPT,
+    CONF_SHUFFLE_TEMPLATE,
     CONF_SOUND_MODE_TEMPLATE,
     CONF_SOURCE_TEMPLATE,
     CONF_STATE_TEMPLATE,
@@ -84,6 +86,9 @@ from .const import (
     CONF_VOLUME_TEMPLATE,
     CONF_VOLUME_UP_SCRIPT,
     DOMAIN,
+)
+from .const import (
+    CONF_ENTITY_PICTURE_TEMPLATE as CONF_ENTRY_PICTURE_TEMPLATE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -212,7 +217,9 @@ def _normalize_action(action_cfg: Any) -> dict[str, Any] | None:
     if not service:
         return None
     result: dict[str, Any] = {"service": str(service)}
-    data = {k: (v.template if hasattr(v, "template") else v) for k, v in step.get("data", {}).items()}
+    data = {
+        k: (v.template if hasattr(v, "template") else v) for k, v in step.get("data", {}).items()
+    }
     # Fold target:/entity_id: into data so they survive the import.
     for src in (step.get("target") or {}, {k: step[k] for k in ("entity_id",) if k in step}):
         for k, v in src.items():
@@ -233,6 +240,7 @@ async def async_setup_platform(
 
     for object_id, entity_config in config[CONF_MEDIAPLAYER].items():
         mapped = {LEGACY_FIELDS.get(k, k): v for k, v in entity_config.items()}
+
         def _str(val: Any, fallback: str) -> str:
             if val is None:
                 return fallback
@@ -369,37 +377,31 @@ class _MediaPlayerTemplateBase(TemplateEntity, MediaPlayerEntity):
             else:
                 self._attr_state = MediaPlayerState(result)
         except ValueError:
-            _LOGGER.error(
-                "Entity %s: invalid state %r", self.entity_id, result
-            )
+            _LOGGER.error("Entity %s: invalid state %r", self.entity_id, result)
             self._attr_state = None
 
     @callback
     def _update_title(self, result: Any) -> None:
         self._attr_media_title = (
-            None if isinstance(result, TemplateError) or result is None
-            else vol.Coerce(str)(result)
+            None if isinstance(result, TemplateError) or result is None else vol.Coerce(str)(result)
         )
 
     @callback
     def _update_artist(self, result: Any) -> None:
         self._attr_media_artist = (
-            None if isinstance(result, TemplateError) or result is None
-            else vol.Coerce(str)(result)
+            None if isinstance(result, TemplateError) or result is None else vol.Coerce(str)(result)
         )
 
     @callback
     def _update_album(self, result: Any) -> None:
         self._attr_media_album_name = (
-            None if isinstance(result, TemplateError) or result is None
-            else vol.Coerce(str)(result)
+            None if isinstance(result, TemplateError) or result is None else vol.Coerce(str)(result)
         )
 
     @callback
     def _update_image_url(self, result: Any) -> None:
         self._attr_media_image_url = (
-            None if isinstance(result, TemplateError) or result is None
-            else vol.Coerce(str)(result)
+            None if isinstance(result, TemplateError) or result is None else vol.Coerce(str)(result)
         )
 
     @callback
@@ -408,13 +410,9 @@ class _MediaPlayerTemplateBase(TemplateEntity, MediaPlayerEntity):
             self._attr_volume_level = None
             return
         try:
-            self._attr_volume_level = vol.All(
-                vol.Coerce(float), vol.Range(min=0, max=1)
-            )(result)
+            self._attr_volume_level = vol.All(vol.Coerce(float), vol.Range(min=0, max=1))(result)
         except vol.Invalid:
-            _LOGGER.error(
-                "Entity %s: invalid volume %r", self.entity_id, result
-            )
+            _LOGGER.error("Entity %s: invalid volume %r", self.entity_id, result)
             self._attr_volume_level = None
 
     @callback
@@ -425,23 +423,19 @@ class _MediaPlayerTemplateBase(TemplateEntity, MediaPlayerEntity):
         try:
             self._attr_is_volume_muted = cv.boolean(result)
         except vol.Invalid:
-            _LOGGER.error(
-                "Entity %s: invalid mute value %r", self.entity_id, result
-            )
+            _LOGGER.error("Entity %s: invalid mute value %r", self.entity_id, result)
             self._attr_is_volume_muted = None
 
     @callback
     def _update_source(self, result: Any) -> None:
         self._attr_source = (
-            None if isinstance(result, TemplateError) or result is None
-            else vol.Coerce(str)(result)
+            None if isinstance(result, TemplateError) or result is None else vol.Coerce(str)(result)
         )
 
     @callback
     def _update_sound_mode(self, result: Any) -> None:
         self._attr_sound_mode = (
-            None if isinstance(result, TemplateError) or result is None
-            else vol.Coerce(str)(result)
+            None if isinstance(result, TemplateError) or result is None else vol.Coerce(str)(result)
         )
 
     @callback
@@ -476,37 +470,31 @@ class _MediaPlayerTemplateBase(TemplateEntity, MediaPlayerEntity):
         try:
             self._attr_media_content_type = MediaType(result)
         except ValueError:
-            _LOGGER.error(
-                "Entity %s: invalid media_content_type %r", self.entity_id, result
-            )
+            _LOGGER.error("Entity %s: invalid media_content_type %r", self.entity_id, result)
             self._attr_media_content_type = None
 
     @callback
     def _update_media_album_artist(self, result: Any) -> None:
         self._attr_media_album_artist = (
-            None if isinstance(result, TemplateError) or result is None
-            else vol.Coerce(str)(result)
+            None if isinstance(result, TemplateError) or result is None else vol.Coerce(str)(result)
         )
 
     @callback
     def _update_media_episode(self, result: Any) -> None:
         self._attr_media_episode = (
-            None if isinstance(result, TemplateError) or result is None
-            else vol.Coerce(str)(result)
+            None if isinstance(result, TemplateError) or result is None else vol.Coerce(str)(result)
         )
 
     @callback
     def _update_media_season(self, result: Any) -> None:
         self._attr_media_season = (
-            None if isinstance(result, TemplateError) or result is None
-            else vol.Coerce(str)(result)
+            None if isinstance(result, TemplateError) or result is None else vol.Coerce(str)(result)
         )
 
     @callback
     def _update_media_series_title(self, result: Any) -> None:
         self._attr_media_series_title = (
-            None if isinstance(result, TemplateError) or result is None
-            else vol.Coerce(str)(result)
+            None if isinstance(result, TemplateError) or result is None else vol.Coerce(str)(result)
         )
 
 
@@ -601,20 +589,30 @@ class MediaPlayerTemplate(_MediaPlayerTemplateBase):
             (self._legacy_album_template, "_attr_media_album_name", self._update_album),
             (self._current_volume_template, "_attr_volume_level", self._update_volume),
             (self._current_is_muted_template, "_attr_is_volume_muted", self._update_muted),
-            (self._media_content_type_template, "_attr_media_content_type", self._update_media_content_type),
+            (
+                self._media_content_type_template,
+                "_attr_media_content_type",
+                self._update_media_content_type,
+            ),
             (self._media_image_url_template, "_attr_media_image_url", self._update_image_url),
             (self._media_episode_template, "_attr_media_episode", self._update_media_episode),
             (self._media_season_template, "_attr_media_season", self._update_media_season),
-            (self._media_series_title_template, "_attr_media_series_title", self._update_media_series_title),
-            (self._media_album_artist_template, "_attr_media_album_artist", self._update_media_album_artist),
+            (
+                self._media_series_title_template,
+                "_attr_media_series_title",
+                self._update_media_series_title,
+            ),
+            (
+                self._media_album_artist_template,
+                "_attr_media_album_artist",
+                self._update_media_album_artist,
+            ),
             (self._current_position_template, "_attr_media_position", self._update_position),
             (self._media_duration_template, "_attr_media_duration", self._update_duration),
             (self._current_sound_mode_template, "_attr_sound_mode", self._update_sound_mode),
         ):
             if tmpl is not None:
-                self.add_template_attribute(
-                    attr, tmpl, None, updater, none_on_template_error=True
-                )
+                self.add_template_attribute(attr, tmpl, None, updater, none_on_template_error=True)
         super()._async_setup_templates()
 
     def _add_source(self, source: str, config: ConfigType | None = None) -> None:
@@ -674,9 +672,7 @@ class MediaPlayerTemplate(_MediaPlayerTemplateBase):
             self._attr_is_volume_muted = mute
             self.async_write_ha_state()
         if s := self._action_scripts.get(CONF_MUTE_ACTION):
-            await self.async_run_script(
-                s, run_variables={"is_muted": mute}, context=self._context
-            )
+            await self.async_run_script(s, run_variables={"is_muted": mute}, context=self._context)
 
     async def async_media_play(self) -> None:
         if s := self._action_scripts.get(CONF_PLAY_ACTION):
@@ -703,13 +699,9 @@ class MediaPlayerTemplate(_MediaPlayerTemplateBase):
             self._attr_volume_level = volume
             self.async_write_ha_state()
         if s := self._action_scripts.get(CONF_SET_VOLUME_ACTION):
-            await self.async_run_script(
-                s, run_variables={"volume": volume}, context=self._context
-            )
+            await self.async_run_script(s, run_variables={"volume": volume}, context=self._context)
 
-    async def async_play_media(
-        self, media_type: str, media_id: str, **kwargs: Any
-    ) -> None:
+    async def async_play_media(self, media_type: str, media_id: str, **kwargs: Any) -> None:
         if s := self._action_scripts.get(CONF_PLAY_MEDIA_ACTION):
             await self.async_run_script(
                 s,
@@ -750,7 +742,9 @@ def _make_template(hass: HomeAssistant, value: str | None) -> Template | None:
     return t
 
 
-def _feature_if(script_val: str | None, feature: MediaPlayerEntityFeature) -> MediaPlayerEntityFeature:
+def _feature_if(
+    script_val: str | None, feature: MediaPlayerEntityFeature
+) -> MediaPlayerEntityFeature:
     return feature if script_val else MediaPlayerEntityFeature(0)
 
 
@@ -840,7 +834,9 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
         feats |= _feature_if(self._play_media_action, MediaPlayerEntityFeature.PLAY_MEDIA)
         feats |= _feature_if(self._seek_action, MediaPlayerEntityFeature.SEEK)
         feats |= _feature_if(self._select_source_action, MediaPlayerEntityFeature.SELECT_SOURCE)
-        feats |= _feature_if(self._select_sound_mode_action, MediaPlayerEntityFeature.SELECT_SOUND_MODE)
+        feats |= _feature_if(
+            self._select_sound_mode_action, MediaPlayerEntityFeature.SELECT_SOUND_MODE
+        )
         feats |= _feature_if(self._set_repeat_action, MediaPlayerEntityFeature.REPEAT_SET)
         feats |= _feature_if(self._set_shuffle_action, MediaPlayerEntityFeature.SHUFFLE_SET)
         self._attr_supported_features = feats
@@ -918,12 +914,14 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
                 templates.append((tpl, handler))
 
         for tpl, handler in templates:
+
             def _make_listener(h):
                 @callback
                 def listener(event, updates):
                     result = updates[-1].result
                     h(result)
                     self.async_write_ha_state()
+
                 return listener
 
             unsub = async_track_template_result(
@@ -991,26 +989,22 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
 
     def _handle_title(self, result: Any) -> None:
         self._attr_media_title = (
-            None if not result or isinstance(result, TemplateError)
-            else str(result)
+            None if not result or isinstance(result, TemplateError) else str(result)
         )
 
     def _handle_artist(self, result: Any) -> None:
         self._attr_media_artist = (
-            None if not result or isinstance(result, TemplateError)
-            else str(result)
+            None if not result or isinstance(result, TemplateError) else str(result)
         )
 
     def _handle_album(self, result: Any) -> None:
         self._attr_media_album_name = (
-            None if not result or isinstance(result, TemplateError)
-            else str(result)
+            None if not result or isinstance(result, TemplateError) else str(result)
         )
 
     def _handle_thumbnail(self, result: Any) -> None:
         self._attr_media_image_url = (
-            None if not result or isinstance(result, TemplateError)
-            else str(result)
+            None if not result or isinstance(result, TemplateError) else str(result)
         )
 
     def _handle_volume(self, result: Any) -> None:
@@ -1032,15 +1026,11 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
             self._attr_is_volume_muted = None
 
     def _handle_source(self, result: Any) -> None:
-        self._attr_source = (
-            None if not result or isinstance(result, TemplateError)
-            else str(result)
-        )
+        self._attr_source = None if not result or isinstance(result, TemplateError) else str(result)
 
     def _handle_sound_mode(self, result: Any) -> None:
         self._attr_sound_mode = (
-            None if not result or isinstance(result, TemplateError)
-            else str(result)
+            None if not result or isinstance(result, TemplateError) else str(result)
         )
 
     def _handle_position(self, result: Any) -> None:
@@ -1074,21 +1064,16 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
             self._attr_media_content_type = None
 
     def _handle_app_id(self, result: Any) -> None:
-        self._attr_app_id = (
-            None if not result or isinstance(result, TemplateError)
-            else str(result)
-        )
+        self._attr_app_id = None if not result or isinstance(result, TemplateError) else str(result)
 
     def _handle_app_name(self, result: Any) -> None:
         self._attr_app_name = (
-            None if not result or isinstance(result, TemplateError)
-            else str(result)
+            None if not result or isinstance(result, TemplateError) else str(result)
         )
 
     def _handle_picture(self, result: Any) -> None:
         self._attr_entity_picture = (
-            None if not result or isinstance(result, TemplateError)
-            else str(result)
+            None if not result or isinstance(result, TemplateError) else str(result)
         )
 
     def _handle_repeat(self, result: Any) -> None:
@@ -1118,9 +1103,7 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
 
     # --- Action helpers ---
 
-    async def _call_action(
-        self, action: str | dict | None, variables: dict | None = None
-    ) -> None:
+    async def _call_action(self, action: str | dict | None, variables: dict | None = None) -> None:
         if not action:
             return
         if isinstance(action, str):
@@ -1129,9 +1112,7 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
             svc: dict[str, Any] = {"entity_id": action}
             if variables:
                 svc["variables"] = variables
-            await self.hass.services.async_call(
-                "script", "turn_on", svc, context=self._context
-            )
+            await self.hass.services.async_call("script", "turn_on", svc, context=self._context)
             return
         service_str = action.get("service") or action.get("action", "")
         if not service_str:
@@ -1199,9 +1180,7 @@ class MediaPlayerTemplateEntry(MediaPlayerEntity):
             self.async_write_ha_state()
         await self._call_action(self._set_volume_action, {"volume": volume})
 
-    async def async_play_media(
-        self, media_type: str, media_id: str, **kwargs: Any
-    ) -> None:
+    async def async_play_media(self, media_type: str, media_id: str, **kwargs: Any) -> None:
         await self._call_action(
             self._play_media_action,
             {"media_type": media_type, "media_id": media_id},

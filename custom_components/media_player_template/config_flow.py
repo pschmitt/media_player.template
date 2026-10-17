@@ -5,7 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.const import CONF_UNIQUE_ID
 from homeassistant.core import callback
 from homeassistant.helpers import selector
@@ -14,14 +19,10 @@ from .const import (
     CONF_ALBUM_TEMPLATE,
     CONF_APP_ID_TEMPLATE,
     CONF_APP_NAME_TEMPLATE,
-    CONF_ENTITY_PICTURE_TEMPLATE,
-    CONF_MEDIA_IMAGE_REMOTELY_ACCESSIBLE,
-    CONF_REPEAT_TEMPLATE,
-    CONF_SET_REPEAT_SCRIPT,
-    CONF_SET_SHUFFLE_SCRIPT,
-    CONF_SHUFFLE_TEMPLATE,
     CONF_ARTIST_TEMPLATE,
     CONF_DURATION_TEMPLATE,
+    CONF_ENTITY_PICTURE_TEMPLATE,
+    CONF_MEDIA_IMAGE_REMOTELY_ACCESSIBLE,
     CONF_MEDIA_TYPE_TEMPLATE,
     CONF_MUTE_SCRIPT,
     CONF_MUTED_TEMPLATE,
@@ -31,10 +32,14 @@ from .const import (
     CONF_PLAY_SCRIPT,
     CONF_POSITION_TEMPLATE,
     CONF_PREVIOUS_SCRIPT,
+    CONF_REPEAT_TEMPLATE,
     CONF_SEEK_SCRIPT,
     CONF_SELECT_SOUND_MODE_SCRIPT,
     CONF_SELECT_SOURCE_SCRIPT,
+    CONF_SET_REPEAT_SCRIPT,
+    CONF_SET_SHUFFLE_SCRIPT,
     CONF_SET_VOLUME_SCRIPT,
+    CONF_SHUFFLE_TEMPLATE,
     CONF_SOUND_MODE_TEMPLATE,
     CONF_SOURCE_TEMPLATE,
     CONF_STATE_TEMPLATE,
@@ -124,9 +129,7 @@ def _template_schema(data: dict[str, Any]) -> vol.Schema:
 
 
 def _action_schema(data: dict[str, Any]) -> vol.Schema:
-    return vol.Schema(
-        {_opt_template(k, data): _OPTIONAL_TEXT for k in _ACTION_KEYS}
-    )
+    return vol.Schema({_opt_template(k, data): _OPTIONAL_TEXT for k in _ACTION_KEYS})
 
 
 class MediaPlayerTemplateConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -138,9 +141,7 @@ class MediaPlayerTemplateConfigFlow(ConfigFlow, domain=DOMAIN):
         self._name: str = ""
         self._data: dict[str, Any] = {}
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -195,9 +196,7 @@ class MediaPlayerTemplateConfigFlow(ConfigFlow, domain=DOMAIN):
             ),
         )
 
-    async def async_step_import(
-        self, import_data: dict[str, Any]
-    ) -> ConfigFlowResult:
+    async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
         """Handle import from YAML configuration (migration to config entry)."""
         unique_id = import_data.get(CONF_UNIQUE_ID) or import_data.get("name", "").lower()
         await self.async_set_unique_id(unique_id)
@@ -222,9 +221,7 @@ class MediaPlayerTemplateOptionsFlow(OptionsFlow):
     def _merged(self) -> dict[str, Any]:
         return {**self._entry.data, **self._entry.options}
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         return self.async_show_menu(
             step_id="init",
             menu_options=["templates", "actions"],
