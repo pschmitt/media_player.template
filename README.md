@@ -14,10 +14,12 @@ A custom integration that lets you define media player entities using Jinja2 tem
 
 ## Installation
 
-### HACS (recommended)
+[![Open this integration in Home Assistant Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=pschmitt&repository=media_player.template&category=integration)
+
+### HACS (older installations)
 
 1. Open HACS → Integrations → ⋮ → Custom repositories
-2. Add `https://github.com/pschmitt/homeassistant-media-player-template` as an **Integration**
+2. Add `https://github.com/pschmitt/media_player.template` as an **Integration**
 3. Install **Media Player Template** and restart HA
 
 ### Manual
