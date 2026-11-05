@@ -1,122 +1,46 @@
-# Media Player Template for Home Assistant
+<p align="center">
+  <img src="custom_components/media_player_template/brand/logo.png" width="128" alt="Media Player Template logo">
+</p>
 
-A custom integration that lets you define media player entities using Jinja2 templates and optional action scripts. Supports both YAML configuration (with hot reload) and UI-driven setup via the Home Assistant config flow.
+<p align="center">
+  <a href="https://my.home-assistant.io/redirect/marketplace_repository/?owner=pschmitt&amp;repository=media_player.template&amp;category=integration"><img src="https://my.home-assistant.io/badges/marketplace_repository.svg" alt="Open this integration in Home Assistant Marketplace"></a>
+</p>
+
+<h1 align="center">Media Player Template</h1>
+
+<p align="center">Build Home Assistant media players from Jinja2 state templates and action scripts.</p>
+
+Based on the original integration by
+[Sennevds](https://github.com/Sennevds/media_player.template).
 
 ## Features
 
-- **Template-driven state** — define playing/paused/idle/etc. from any sensor, binary sensor, or arbitrary template
-- **Rich metadata** — title, artist, album, thumbnail, position, duration, volume, mute, source, sound mode, app id/name, repeat, shuffle, entity picture
-- **Full action support** — play, pause, stop, next/previous, volume, seek, play media, repeat, shuffle, and more
-- **Config entry + UI** — add and configure players from the HA UI without editing YAML
-- **Hot reload** — YAML-configured players reload without restarting HA (`Developer Tools → YAML → Reload`)
-- **Device registry** — each player appears as a proper HA device
-- **HACS compatible**
+- **Template-driven state:** Derive playback state and metadata from other Home Assistant entities. See [Configuration](docs/configuration.md).
+- **Playback actions:** Attach scripts for play, pause, seek, volume, media, repeat, shuffle and more.
+- **UI or YAML:** Create players through a config flow or import them from YAML with hot reload.
+- **Device registry:** Represent each configured player as a Home Assistant device.
 
-## Installation
+## Install
 
-[![Open this integration in Home Assistant Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=pschmitt&repository=media_player.template&category=integration)
+Use the Marketplace badge above on Home Assistant 2026.11 or later to add this
+repository as a custom integration. On older versions, add it as a HACS
+custom repository of type **Integration**. Install and restart Home Assistant.
+The badge does not imply a public catalog listing. For manual installation,
+copy `custom_components/media_player_template/` into Home Assistant's
+`custom_components/` directory and restart.
 
-### HACS (older installations)
+## Quick start
 
-1. Open HACS → Integrations → ⋮ → Custom repositories
-2. Add `https://github.com/pschmitt/media_player.template` as an **Integration**
-3. Install **Media Player Template** and restart HA
+1. Add **Media Player Template** under **Settings → Devices & services → Add integration**.
+2. Enter a player name and state template such as `{{ states('media_player.example') }}`.
+3. Optionally add metadata templates and action scripts, then inspect the new media player.
 
-### Manual
+## Documentation
 
-Copy `custom_components/media_player_template/` into your HA config directory and restart.
+| Topic | Description |
+|-------|-------------|
+| [Configuration](docs/configuration.md) | YAML example, supported state values and action variables |
 
-## YAML configuration
+## License
 
-```yaml
-media_player:
-  - platform: media_player_template
-    media_players:
-      my_desktop:
-        friendly_name: "My Desktop"
-        unique_id: my-desktop-playerctl
-        value_template: >-
-          {% set state = state_attr("binary_sensor.desktop_media", "state") %}
-          {% if state in ["playing", "paused"] %}
-            {{ state }}
-          {% elif is_state("binary_sensor.desktop_media", "on") %}
-            playing
-          {% else %}
-            idle
-          {% endif %}
-        title_template: '{{ state_attr("binary_sensor.desktop_media", "title") }}'
-        artist_template: '{{ state_attr("binary_sensor.desktop_media", "artist") }}'
-        album_template: '{{ state_attr("binary_sensor.desktop_media", "album") }}'
-        current_volume_template: '{{ states("sensor.desktop_volume") | float }}'
-        current_is_muted_template: '{{ is_state("binary_sensor.desktop_mute", "on") }}'
-        pause:
-          service: script.pause_desktop
-        play:
-          service: script.resume_desktop
-        next:
-          service: script.desktop_next_track
-        previous:
-          service: script.desktop_prev_track
-        volume_up:
-          service: script.desktop_vol_up
-        volume_down:
-          service: script.desktop_vol_down
-        # Also supported (same keys as upstream media_player.template):
-        # app_id_template, app_name_template, entity_picture_template,
-        # current_repeat_template (off/all/one), current_shuffle_template,
-        # set_repeat / set_shuffle actions, media_image_url_remotely_accessible
-```
-
-YAML players are imported into config entries on startup; the keys above map onto the config-entry fields of the same meaning.
-
-To hot-reload after changing YAML: **Developer Tools → YAML → Reload** (select your domain or use `homeassistant.reload_custom_component`).
-
-## UI / config flow
-
-Go to **Settings → Integrations → Add Integration → Media Player Template**.
-
-1. Enter a **name** and a **state template** (required)
-2. Optionally add metadata templates (title, artist, album, thumbnail, volume, mute, source, …)
-3. Optionally add action scripts (scripts to call for play, pause, stop, etc.)
-
-After creation you can edit all settings under **Configure** in the integration card.
-
-## State template values
-
-The state template should render one of:
-
-| Value | Meaning |
-|-------|---------|
-| `playing` | Currently playing |
-| `paused` | Paused |
-| `idle` | Idle / stopped |
-| `on` / `true` | On |
-| `off` / `false` | Off |
-| `standby` | Standby |
-| `buffering` | Buffering |
-
-## Action script variables
-
-| Action | Available variables |
-|--------|-------------------|
-| `set_volume` | `{{ volume }}` — float 0.0–1.0 |
-| `mute` | `{{ is_muted }}` — boolean |
-| `play_media` | `{{ media_id }}`, `{{ media_type }}` |
-| `seek` | `{{ position }}` — seconds |
-| `select_source` | `{{ source }}` — string |
-| `select_sound_mode` | `{{ sound_mode }}` — string |
-| `set_repeat` | `{{ repeat }}` — `off`, `all` or `one` |
-| `set_shuffle` | `{{ shuffle }}` — boolean |
-
-When an action is a plain script entity id (UI-created players), these variables are passed to the script as `variables`.
-
-If the repeat or shuffle template is left empty, the player keeps the last value set through the action (optimistic), just like volume and mute.
-
-## Credits
-
-Originally by [@Sennevds](https://github.com/Sennevds/media_player.template).
-Forked and modernised by [@pschmitt](https://github.com/pschmitt):
-- Fixed compatibility with Home Assistant 2026.6+
-- Added config entry / UI support
-- Added device registry support
-- Added hot reload for YAML configuration
+[MIT](LICENSE).
